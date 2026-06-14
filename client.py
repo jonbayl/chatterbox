@@ -36,7 +36,8 @@ async def chatterbox_receive(reader, writer):
     except KeyboardInterrupt:
         print("\nExiting chat...")
     finally:
-        sock.close()
+        writer.close()
+        await writer.wait_closed()
 
 async def chatterbox_send(reader, writer):
     loop = asyncio.get_event_loop()
@@ -51,7 +52,8 @@ async def chatterbox_send(reader, writer):
     except KeyboardInterrupt:
         print("\nExiting chat...")
     finally:
-        sock.close()
+        writer.close()
+        await writer.wait_closed()
 
 async def main():
     if args.ssl:

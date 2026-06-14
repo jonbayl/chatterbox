@@ -34,6 +34,7 @@ def chatterbox_setup_ssl(host, port, cert, key):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.bind((host, port))
     sock.listen()
+    print(f"Chatterbox Server is listening on {host}:{port} (ssl enabled)")
 
     sock = context.wrap_socket(sock, server_side=True)
 

@@ -1,5 +1,6 @@
 import argparse
 import socket
+import ssl
 import asyncio
 
 def chatterbox_client_cliparser():
@@ -11,28 +12,23 @@ def chatterbox_client_cliparser():
 
     return args
 
-def chatterbox_client_insecure(host, port):
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.connect((host, port))
-    sock.setblocking(False)
-    return sock
+async def chatterbox_client_insecure(host, port):
+    reader, writer = await asyncio.open_connection(host, port)
+    return reader, writer
 
-def chatterbox_client_secure(host, port, cert):
+async def chatterbox_client_secure(host, port, cert):
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     context.load_verify_locations(cert)
 
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock = context.wrap_socket(sock, server_hostname=host)
-    sock.connect((host, port))
-    sock.setblocking(False)
+    reader, writer = await asyncio.open_connection(host, port, ssl=context)
     
-    return sock
+    return reader, writer
 
-async def chatterbox_receive(sock):
+async def chatterbox_receive(reader, writer):
     loop = asyncio.get_event_loop()
     try:
         while True:
-            data = await loop.sock_recv(sock, 1024)
+            data = await reader.read(1024)
             if not data:
                 print("Server closed the connection.")
                 break
@@ -42,7 +38,7 @@ async def chatterbox_receive(sock):
     finally:
         sock.close()
 
-async def chatterbox_send(sock):
+async def chatterbox_send(reader, writer):
     loop = asyncio.get_event_loop()
     try:
         while True:
@@ -50,25 +46,25 @@ async def chatterbox_send(sock):
             if message.lower() == 'exit':
                 print("Exiting chat...")
                 break
-            await loop.sock_sendall(sock, message.encode('utf-8'))
+            writer.write(message.encode('utf-8'))
+            await writer.drain()
     except KeyboardInterrupt:
         print("\nExiting chat...")
     finally:
         sock.close()
 
 async def main():
+    if args.ssl:
+        reader, writer = await chatterbox_client_secure(args.host, args.port, args.ssl)
+    else:
+        reader, writer = await chatterbox_client_insecure(args.host, args.port)
+
     await asyncio.gather(
-        chatterbox_receive(sock),
-        chatterbox_send(sock)
+        chatterbox_receive(reader, writer),
+        chatterbox_send(reader, writer)
     )
 
 if __name__ == "__main__":
     args = chatterbox_client_cliparser()
-
-    if args.ssl:
-        sock = chatterbox_client_secure(args.host, args.port, args.ssl)
-    else:
-        sock = chatterbox_client_insecure(args.host, args.port)
-    
     asyncio.run(main())
     

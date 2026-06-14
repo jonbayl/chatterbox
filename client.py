@@ -3,6 +3,10 @@ import socket
 import ssl
 import asyncio
 
+from prompt_toolkit import PromptSession, print_formatted_text
+from prompt_toolkit.patch_stdout import patch_stdout
+from prompt_toolkit.formatted_text import FormattedText
+
 def chatterbox_client_cliparser():
     parser = argparse.ArgumentParser(description='Chatterbox Client is a simple network chat client)')
     parser.add_argument('host', type=str, nargs="?", default="localhost", help='Host address to connect to (default: localhost)')
@@ -30,27 +34,31 @@ async def chatterbox_receive(reader, writer):
         while True:
             data = await reader.read(1024)
             if not data:
-                print("Server closed the connection.")
+                print_formatted_text("Server closed the connection.")
                 break
-            print(f"\rReceived: {data.decode('utf-8')}")
+            print_formatted_text(FormattedText([
+                ('ansicyan', f"Received: {data.decode('utf-8')}")
+            ]))
     except KeyboardInterrupt:
-        print("\nExiting chat...")
+        print_formatted_text("Server closed the connection.")
     finally:
         writer.close()
         await writer.wait_closed()
 
 async def chatterbox_send(reader, writer):
-    loop = asyncio.get_event_loop()
+    session = PromptSession()
     try:
         while True:
-            message = await loop.run_in_executor(None, input, "Your message > ")
+            message = await session.prompt_async("Your message > ")
+            session.app.output.write_raw("\033[1A\033[2K")
+            session.app.output.flush()
             if message.lower() == 'exit':
-                print("Exiting chat...")
+                print_formatted_text("Exiting chat...")
                 break
             writer.write(message.encode('utf-8'))
             await writer.drain()
     except KeyboardInterrupt:
-        print("\nExiting chat...")
+        print_formatted_text("Exiting chat...")
     finally:
         writer.close()
         await writer.wait_closed()
@@ -61,10 +69,11 @@ async def main():
     else:
         reader, writer = await chatterbox_client_insecure(args.host, args.port)
 
-    await asyncio.gather(
-        chatterbox_receive(reader, writer),
-        chatterbox_send(reader, writer)
-    )
+    with patch_stdout():
+        await asyncio.gather(
+            chatterbox_receive(reader, writer),
+            chatterbox_send(reader, writer)
+        )
 
 if __name__ == "__main__":
     args = chatterbox_client_cliparser()

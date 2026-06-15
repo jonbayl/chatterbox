@@ -128,6 +128,8 @@ def chatterbox_serve(sock):
         client_socket.close()
 
 def main():
+    """Main entry point for the Chatterbox server."""
+
     args = chatterbox_cliparser()
 
     if args.cert:

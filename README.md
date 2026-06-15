@@ -9,7 +9,7 @@ This is largely a learning project to enhance my own understanding of:
 Also has relatively simple TLS encryption capabilities, with the client validation (not hardened by any stretch!). 
 
 # TODO:
-- [ x ] Convert server.py to async functions so it can actually handle more than one connected client properly... 
+- [x] Convert server.py to async functions so it can actually handle more than one connected client properly... 
 - [ ] Implement a simple chat protocol so that messages are always handled properly. Support passing metadata with messages.
 - [ ] User creation and management?
 - [ ] Server tools - e.g. global message broadcast and basic administration like ban/kick.

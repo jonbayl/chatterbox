@@ -108,7 +108,7 @@ async def chatterbox_receive(reader, writer):
                 print_formatted_text("Server closed the connection.")
                 break
             print_formatted_text(FormattedText([
-                ('ansicyan', f"Received: {data.decode('utf-8')}")
+                ('ansicyan', f"{data.decode('utf-8')}")
             ]))
     except KeyboardInterrupt:
         print_formatted_text("Server closed the connection.")

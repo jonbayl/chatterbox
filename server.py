@@ -6,8 +6,10 @@ then broadcast to all other users.
 """
 
 import argparse
-import socket
 import ssl
+import asyncio
+
+CONNECTED_CLIENTS = set()
 
 def chatterbox_cliparser():
     """Handle command line parsing for the server.
@@ -51,32 +53,71 @@ def chatterbox_cliparser():
 
     return args
 
-def chatterbox_setup(host, port):
-    """ Setup an insecure TCP socket
+async def chatterbox_broadcast(message, sender):
+    """Broadcast a received message to all other users
 
-    Configures the server to set up a raw, unencrypted TCP socket
-    on the specified host and port.
+    Takes a raw byte stream read from the reader and broadcasts
+    it to all connected clients which are not the original
+    sender.
 
     Args:
-        host (str): The hostname or IP address to bind the server to.
-        port (int): The port number to listen on.
+        message (bytes): raw message data in binary
+        sender (asyncio.StreamWriter): The writer for the connection.
+    """
+    message = message.decode("utf-8")
+    message = sender+": "+message
+    message = message.encode("utf-8")
 
-    Returns:
-        socket.socket: A configured TCP socket ready to accept connections.
+    for client in list(CONNECTED_CLIENTS):
+        try:
+            client.write(message)
+            await client.drain()
+        except ConnectionResetError:
+            CONNECTED_CLIENTS.discard(client)
+
+async def chatterbox_handle(reader, writer):
+    """Handles a connection received by the chat server.
+
+    For each connection received, unpacks key metadata, 
+    broadcasts a welcome message and then handles reading 
+    data received and calling the broadcast function as 
+    needed.
+
+    Args:
+        reader (asyncio.StreamReader): The reader for the connection.
+        writer (asyncio.StreamWriter): The writer for the connection.
     """
 
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.bind((host, port))
-    sock.listen()
-    print(f"Chatterbox Server is listening on {host}:{port}")
+    client_ip = writer.get_extra_info('peername')
+    print(f"Accepted connection from: {client_ip[0]}")
 
-    return sock
+    CONNECTED_CLIENTS.add(writer)
+    writer.write(b"Welcome to Chatterbox Server!\n")
+    await writer.drain()
 
-def chatterbox_setup_ssl(host, port, cert, key):
-    """ Setup an secure TCP socket
+    try:
+        while True:
+            data = await reader.read(1024)
+            if not data:
+                 break
+            print(f"Message from {client_ip[0]}: "
+                f"{data.decode('utf-8').strip()}"
+            )
+            await chatterbox_broadcast(data, sender=client_ip[0])
+    except asyncio.IncompleteReadError:
+        pass
+    finally:
+        CONNECTED_CLIENTS.discard(writer)
+        writer.close()
+        await writer.wait_closed()
+        print(f"{client_ip[0]}: disconnected.")
+
+async def chatterbox_listen(host, port, cert=None, key=None):
+    """ Setup a TCP socket to listen for incoming connections.
 
     Configures the server to set up an encrypted TCP socket
-    on the specified host and port.
+    on the specified host and port, if a cert and key are
+    provided. Otherwise, it sets up a raw, unencrypted TCP socket.
 
     Args:
         host (str): The hostname or IP address to bind the server to.
@@ -84,68 +125,41 @@ def chatterbox_setup_ssl(host, port, cert, key):
         cert (str): Path to the SSL certificate file.
         key (str): Path to the SSL key file.
 
-    Returns:
-        socket.socket: A configured TCP socket ready to accept connections.
+    Raises:
+        ValueError: If only one of cert or key is provided.
     """
 
-    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-    context.load_cert_chain(certfile=cert, keyfile=key)
+    if cert and key:
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context.load_cert_chain(certfile=cert, keyfile=key)
 
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.bind((host, port))
-    sock.listen()
-    print(f"Chatterbox Server is listening on {host}:{port} (ssl enabled)")
+        print(f"Chatterbox Server is listening on {host}:{port} "
+            "(ssl enabled)"
+        )
 
-    sock = context.wrap_socket(sock, server_side=True)
-
-    return sock
-
-def chatterbox_serve(sock):
-    """ Start the server to accept incoming connections.
-
-    Continuously listens for incoming client connections and
-    handles them in a loop. For each connection, it sends a welcome
-    message and echoes back any received messages.
-
-    Args:
-        sock (socket.socket): The server socket to accept connections on.
-    """
-
-    while True:
-        client_socket, client_address = sock.accept()
-        print(f"Connection established with {client_address}")
-
-        client_socket.sendall(b"Welcome to Chatterbox Server!\n")
-        while True:
-            data = client_socket.recv(1024)
-            if not data:
-                break
-            print(f"Message from {client_address[0]}: "
-                f"{data.decode('utf-8')}"
-            )
-            client_socket.sendall(data)
-
-        client_socket.close()
+        server = await asyncio.start_server(chatterbox_handle, host, port,
+            ssl=context
+        )
+        async with server:
+            await server.serve_forever()
+    elif cert or key:
+        raise ValueError("SSL certificate provided without a key.")
+    else:
+       server = await asyncio.start_server(chatterbox_handle, host, port)
+       async with server:
+        await server.serve_forever()
 
 def main():
     """Main entry point for the Chatterbox server."""
 
     args = chatterbox_cliparser()
 
-    if args.cert:
-        sock = chatterbox_setup_ssl(args.host, args.port,
-            args.cert, args.key
-        )
-    else:
-        sock = chatterbox_setup(args.host, args.port)
-
     try:
-        chatterbox_serve(sock)
+        asyncio.run(chatterbox_listen(args.host, args.port,
+            args.cert, args.key
+        ))
     except KeyboardInterrupt:
         print("\nChatterbox server is exiting...")
-        sock.close()
-
-    sock.close()
 
 if __name__ == '__main__':
     main()

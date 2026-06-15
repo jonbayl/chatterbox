@@ -25,21 +25,21 @@ def chatterbox_cliparser():
     parser = argparse.ArgumentParser(description='Chatterbox Server is a'
         ' simple network chat server)'
     )
-    parser.add_argument('host', type=str, nargs="?", 
+    parser.add_argument('host', type=str, nargs="?",
         default="localhost", help='Host address to listen on'
         ' (default: localhost)'
     )
-    parser.add_argument('--port', type=int, default=2428, 
+    parser.add_argument('--port', type=int, default=2428,
         help='Port number to listen on (default: 12345)'
     )
 
-    enable_ssl = parser.add_argument_group("ssl", 
+    enable_ssl = parser.add_argument_group("ssl",
         "Enable SSL/TLS for secure communication"
     )
-    enable_ssl.add_argument('--cert', type=str, 
+    enable_ssl.add_argument('--cert', type=str,
         help="Path to the SSL certificate file (optional)"
     )
-    enable_ssl.add_argument('--key', type=str, 
+    enable_ssl.add_argument('--key', type=str,
         help="Path to the SSL key file (optional)"
     )
 
@@ -70,7 +70,7 @@ def chatterbox_setup(host, port):
     sock.listen()
     print(f"Chatterbox Server is listening on {host}:{port}")
 
-    return sock 
+    return sock
 
 def chatterbox_setup_ssl(host, port, cert, key):
     """ Setup an secure TCP socket
@@ -116,22 +116,22 @@ def chatterbox_serve(sock):
         print(f"Connection established with {client_address}")
 
         client_socket.sendall(b"Welcome to Chatterbox Server!\n")
-        while True: 
+        while True:
             data = client_socket.recv(1024)
             if not data:
                 break
-            print(f"Message from {client_address[0]}: " 
+            print(f"Message from {client_address[0]}: "
                 f"{data.decode('utf-8')}"
             )
-            client_socket.sendall(data) 
-        
+            client_socket.sendall(data)
+
         client_socket.close()
 
-if __name__ == '__main__':
+def main():
     args = chatterbox_cliparser()
 
     if args.cert:
-        sock = chatterbox_setup_ssl(args.host, args.port, 
+        sock = chatterbox_setup_ssl(args.host, args.port,
             args.cert, args.key
         )
     else:
@@ -144,3 +144,6 @@ if __name__ == '__main__':
         sock.close()
 
     sock.close()
+
+if __name__ == '__main__':
+    main()

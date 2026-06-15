@@ -29,13 +29,13 @@ def chatterbox_client_cliparser():
     parser = argparse.ArgumentParser(
         description='Chatterbox Client is a simple network chat client)'
         )
-    parser.add_argument('host', type=str, nargs="?", default="localhost", 
+    parser.add_argument('host', type=str, nargs="?", default="localhost",
         help='Host address to connect to (default: localhost)'
     )
-    parser.add_argument('--port', type=int, default=2428, 
+    parser.add_argument('--port', type=int, default=2428,
         help='Port number to connect to (default: 2428)'
     )
-    parser.add_argument('--ssl', type=str, 
+    parser.add_argument('--ssl', type=str,
         help='Enable SSL/TLS for secure communication (provide'
         ' "trusted CA cert" to enable SSL)'
     )
@@ -85,12 +85,12 @@ async def chatterbox_client_secure(host, port, cert):
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     context.load_verify_locations(cert)
 
-    reader, writer = await asyncio.open_connection(host, port, 
+    reader, writer = await asyncio.open_connection(host, port,
     ssl=context)
 
     return reader, writer
 
-async def chatterbox_receive(reader, writer):   
+async def chatterbox_receive(reader, writer):
     """ Receive messages from the server.
 
     Continuously listens for incoming messages from the server
@@ -101,7 +101,6 @@ async def chatterbox_receive(reader, writer):
         writer (asyncio.StreamWriter): The writer for the connection.
     """
 
-    loop = asyncio.get_event_loop()
     try:
         while True:
             data = await reader.read(1024)
@@ -117,16 +116,15 @@ async def chatterbox_receive(reader, writer):
         writer.close()
         await writer.wait_closed()
 
-async def chatterbox_send(reader, writer):
+async def chatterbox_send(writer):
     """ Send messages to the server.
 
     Allows the user to input messages which are then sent to the server.
 
     Args:
-        reader (asyncio.StreamReader): The reader for the connection.
         writer (asyncio.StreamWriter): The writer for the connection.
     """
-    
+
     session = PromptSession()
     try:
         while True:
@@ -150,18 +148,18 @@ async def main():
     args = chatterbox_client_cliparser()
 
     if args.ssl:
-        reader, writer = await chatterbox_client_secure(args.host, 
+        reader, writer = await chatterbox_client_secure(args.host,
             args.port, args.ssl
         )
     else:
-        reader, writer = await chatterbox_client_insecure(args.host, 
+        reader, writer = await chatterbox_client_insecure(args.host,
             args.port
         )
 
     with patch_stdout():
         await asyncio.gather(
             chatterbox_receive(reader, writer),
-            chatterbox_send(reader, writer)
+            chatterbox_send(writer)
         )
 
 if __name__ == "__main__":

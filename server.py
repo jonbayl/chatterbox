@@ -99,7 +99,7 @@ async def chatterbox_handle(reader, writer):
         while True:
             data = await reader.read(1024)
             if not data:
-                 break
+                break
             print(f"Message from {client_ip[0]}: "
                 f"{data.decode('utf-8').strip()}"
             )
@@ -145,9 +145,9 @@ async def chatterbox_listen(host, port, cert=None, key=None):
     elif cert or key:
         raise ValueError("SSL certificate provided without a key.")
     else:
-       server = await asyncio.start_server(chatterbox_handle, host, port)
-       async with server:
-        await server.serve_forever()
+        server = await asyncio.start_server(chatterbox_handle, host, port)
+        async with server:
+            await server.serve_forever()
 
 def main():
     """Main entry point for the Chatterbox server."""

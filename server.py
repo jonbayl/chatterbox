@@ -32,7 +32,7 @@ def chatterbox_cliparser():
         ' (default: localhost)'
     )
     parser.add_argument('--port', type=int, default=2428,
-        help='Port number to listen on (default: 12345)'
+        help='Port number to listen on (default: 2428)'
     )
 
     enable_ssl = parser.add_argument_group("ssl",
@@ -145,6 +145,8 @@ async def chatterbox_listen(host, port, cert=None, key=None):
     elif cert or key:
         raise ValueError("SSL certificate provided without a key.")
     else:
+        print(f"Chatterbox Server is listening on {host}:{port}")
+
         server = await asyncio.start_server(chatterbox_handle, host, port)
         async with server:
             await server.serve_forever()

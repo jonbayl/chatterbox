@@ -14,8 +14,8 @@
 - If a message is malformed and does not conform with the above, the server must respond with ERR1.
 - A session key must not exceed 300 bytes.
 - If a session key is too long, a server must respond with error ERR2. 
-- A chat message must not exceed 3000 bytes.
-- If a chat message is too long, a server must respond with error ERR3.
+- A payload must not exceed 3000 bytes.
+- If a payload is too long, a server must respond with error ERR3.
 - Timestamps are not conveyed in frames. The server and client may determine the timestamp based on the time that they received the message.
 - If the server does not support the version of the Chatterbox protocol included in the frame, the server must respond with ERR4.
 
